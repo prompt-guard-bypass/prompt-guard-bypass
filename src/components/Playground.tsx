@@ -30,7 +30,6 @@ const Playground: React.FC = () => {
   const [selectedAttack, setSelectedAttack] = useState<string>('');
   const [currentMessages, setCurrentMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [expandedMessages, setExpandedMessages] = useState<Set<number>>(new Set());
 
   const data = jailbreakData as JailbreakData;
   const categories = Object.keys(data);
@@ -61,17 +60,14 @@ const Playground: React.FC = () => {
         // Simulate loading delay for better UX
         setTimeout(() => {
           setCurrentMessages(attack.messages);
-          setExpandedMessages(new Set()); // Reset expanded messages
           setIsLoading(false);
         }, 500);
       } else {
         setCurrentMessages([]);
-        setExpandedMessages(new Set());
         setIsLoading(false);
       }
     } else {
       setCurrentMessages([]);
-      setExpandedMessages(new Set());
     }
   }, [selectedCategory, selectedProvider, selectedAttack, data]);
 
@@ -131,15 +127,6 @@ const Playground: React.FC = () => {
   const formatMessageContent = (content: string) => {
     // Split content into lines and format
     return content.split('\n').map((line, lineIndex) => {
-      // Check if this is a truncation indicator
-      if (line.trim().startsWith('...') && line.includes('hidden')) {
-        return (
-          <span key={lineIndex} className="truncation-indicator">
-            {line}
-          </span>
-        );
-      }
-      
       // Check if line is a quote or special formatting
       if (line.trim().startsWith('"') && line.trim().endsWith('"')) {
         return (
@@ -160,52 +147,6 @@ const Playground: React.FC = () => {
       
       return <span key={lineIndex}>{line}</span>;
     });
-  };
-
-  const isLargeMessage = (content: string) => {
-    // Consider a message "large" if it's longer than 1000 characters or has more than 12 lines
-    return content.length > 1000 || content.split('\n').length > 12;
-  };
-
-  const isLastResponseMessage = (messageIndex: number, message: Message) => {
-    if (message.type !== 'response') return false;
-    const lastResponseIndex = [...currentMessages].reverse().findIndex(msg => msg.type === 'response');
-    const actualLastResponseIndex = lastResponseIndex >= 0 ? currentMessages.length - 1 - lastResponseIndex : -1;
-    return messageIndex === actualLastResponseIndex;
-  };
-
-  const getTruncatedContent = (content: string, messageIndex: number, message: Message) => {
-    // Don't truncate the last response message (usually contains the jailbroken response)
-    const isLastResponse = isLastResponseMessage(messageIndex, message);
-    
-    if (!isLargeMessage(content) || expandedMessages.has(messageIndex) || isLastResponse) {
-      return content;
-    }
-
-    const lines = content.split('\n');
-    const chars = content.length;
-    
-    if (lines.length > 12) {
-      // Show first 5 lines and last 5 lines
-      const firstPart = lines.slice(0, 5).join('\n');
-      const lastPart = lines.slice(-5).join('\n');
-      return `${firstPart}\n\n... [${lines.length - 10} lines hidden] ...\n\n${lastPart}`;
-    } else {
-      // Show first 400 chars and last 400 chars
-      const firstPart = content.substring(0, 400);
-      const lastPart = content.substring(chars - 400);
-      return `${firstPart}\n\n... [${chars - 800} characters hidden] ...\n\n${lastPart}`;
-    }
-  };
-
-  const toggleMessageExpansion = (messageIndex: number) => {
-    const newExpanded = new Set(expandedMessages);
-    if (newExpanded.has(messageIndex)) {
-      newExpanded.delete(messageIndex);
-    } else {
-      newExpanded.add(messageIndex);
-    }
-    setExpandedMessages(newExpanded);
   };
 
   return (
@@ -289,11 +230,6 @@ const Playground: React.FC = () => {
         ) : (
           <div className="chat-messages">
             {currentMessages.map((message, index) => {
-              const truncatedContent = getTruncatedContent(message.content, index, message);
-              const isExpanded = expandedMessages.has(index);
-              const isLarge = isLargeMessage(message.content);
-              const isLastResponse = isLastResponseMessage(index, message);
-              
               return (
                 <div 
                   key={index} 
@@ -308,32 +244,16 @@ const Playground: React.FC = () => {
                         {message.type === 'prompt' ? 'User' : formatProviderName(selectedProvider)}
                       </span>
                       <span className="message-number">Message {message.number}</span>
-                      {isLarge && (
-                        <span className="message-length">
-                          ({message.content.length} chars, {message.content.split('\n').length} lines)
-                          {isLastResponse && <span className="final-response-badge">Final Response</span>}
-                        </span>
-                      )}
                     </div>
                   </div>
                   <div className="message-content">
-                    {formatMessageContent(truncatedContent).map((formattedLine, lineIndex) => (
+                    {formatMessageContent(message.content).map((formattedLine, lineIndex) => (
                       <React.Fragment key={lineIndex}>
                         {formattedLine}
-                        {lineIndex < formatMessageContent(truncatedContent).length - 1 && <br />}
+                        {lineIndex < formatMessageContent(message.content).length - 1 && <br />}
                       </React.Fragment>
                     ))}
                   </div>
-                  {isLarge && !isLastResponse && (
-                    <div className="message-actions">
-                      <button 
-                        className="expand-button"
-                        onClick={() => toggleMessageExpansion(index)}
-                      >
-                        {isExpanded ? '📄 Show Less' : '📖 Show Full Message'}
-                      </button>
-                    </div>
-                  )}
                   {message.variant && (
                     <div className="message-variant">
                       <span className="variant-label">Variant: {message.variant}</span>
