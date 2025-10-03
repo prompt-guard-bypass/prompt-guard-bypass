@@ -241,6 +241,12 @@
   color: #333;
 }
 
+.message-info-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .message-number {
   font-size: 0.8rem;
   color: #666;
@@ -289,6 +295,16 @@
   align-self: flex-end;
 }
 
+/* Override gray text colors for better contrast on blue background */
+.user-message .message-number {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.user-message .code-like {
+  color: rgba(255, 255, 255, 0.95);
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
 .assistant-message .message-avatar {
   background-color: #f0f0f0;
   color: #333;
@@ -304,29 +320,19 @@
   align-self: flex-start;
 }
 
-.message-variant {
-  margin-top: 0.5rem;
-}
-
-.user-message .message-variant {
-  display: flex;
-  justify-content: flex-end;
-  align-self: flex-end;
-  max-width: 75%;
-}
-
-.assistant-message .message-variant {
-  align-self: flex-start;
-  max-width: 75%;
-}
-
 .variant-label {
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   color: #666;
   background-color: #f0f0f0;
-  padding: 0.3rem 0.6rem;
+  padding: 0.2rem 0.5rem;
   border-radius: 4px;
   display: inline-block;
+  white-space: nowrap;
+}
+
+.user-message .variant-label {
+  color: #0066cc;
+  background-color: rgba(0, 102, 204, 0.1);
 }
 
 /* Responsive Design */
@@ -350,19 +356,6 @@
   .assistant-message .message-content {
     margin-left: 0;
     margin-right: auto;
-  }
-
-  .message-variant {
-    margin-left: 0;
-    margin-right: 0;
-  }
-
-  .user-message .message-variant {
-    max-width: 85%;
-  }
-
-  .assistant-message .message-variant {
-    max-width: 85%;
   }
 
   .chat-messages {

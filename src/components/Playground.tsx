@@ -243,7 +243,12 @@ const Playground: React.FC = () => {
                       <span className="message-role">
                         {message.type === 'prompt' ? 'User' : formatProviderName(selectedProvider)}
                       </span>
-                      <span className="message-number">Message {message.number}</span>
+                      <div className="message-info-row">
+                        <span className="message-number">Message {message.number}</span>
+                        {message.variant && (
+                          <span className="variant-label">Variant: {message.variant}</span>
+                        )}
+                      </div>
                     </div>
                   </div>
                   <div className="message-content">
@@ -254,11 +259,6 @@ const Playground: React.FC = () => {
                       </React.Fragment>
                     ))}
                   </div>
-                  {message.variant && (
-                    <div className="message-variant">
-                      <span className="variant-label">Variant: {message.variant}</span>
-                    </div>
-                  )}
                 </div>
               );
             })}
