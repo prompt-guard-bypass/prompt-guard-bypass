@@ -1,11 +1,19 @@
+import { useState } from 'react'
 import './App.css'
 import overviewSvg from './assets/overview.svg'
+import Navigation from './components/Navigation'
+import Playground from './components/Playground'
 
 function App() {
+  const [activeTab, setActiveTab] = useState<'paper' | 'playground'>('paper');
+
   return (
-    <div className="container">
-      {/* Header Section */}
-      <header className="header">
+    <>
+      <Navigation activeTab={activeTab} onTabChange={setActiveTab} />
+      {activeTab === 'paper' ? (
+        <div className="container">
+          {/* Header Section */}
+          <header className="header">
         <h1 className="title">
           Bypassing Prompt Guards in Production with Controlled-Release
           Prompting
@@ -135,17 +143,23 @@ function App() {
         </pre>
       </section>
 
-      {/* Footer */}
-      <footer className="footer">
-        <p>
-          Built with ❤️ using React. Last updated:{" "}
-          {new Date().toLocaleDateString("en-US", {
-            month: "long",
-            year: "numeric",
-          })}
-        </p>
-      </footer>
-    </div>
+        {/* Footer */}
+        <footer className="footer">
+          <p>
+            Built with ❤️ using React. Last updated:{" "}
+            {new Date().toLocaleDateString("en-US", {
+              month: "long",
+              year: "numeric",
+            })}
+          </p>
+        </footer>
+      </div>
+    ) : (
+      <div className="container">
+        <Playground />
+      </div>
+    )}
+    </>
   );
 }
 
