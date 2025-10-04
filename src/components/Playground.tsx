@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import jailbreakData from '../assets/jailbreak_data.json';
 import './Playground.css';
 
@@ -55,6 +55,17 @@ const Playground: React.FC = () => {
   const [currentMessages, setCurrentMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [expandedMessages, setExpandedMessages] = useState<Set<number>>(new Set());
+  
+  // Side-by-side view state
+  const [viewMode, setViewMode] = useState<'single' | 'side-by-side'>('side-by-side');
+  const [selectedAttack2, setSelectedAttack2] = useState<string>('');
+  const [currentMessages2, setCurrentMessages2] = useState<Message[]>([]);
+  const [isLoading2, setIsLoading2] = useState(false);
+  const [expandedMessages2, setExpandedMessages2] = useState<Set<number>>(new Set());
+
+  // Refs for scrolling to final message
+  const chatMessagesRef1 = useRef<HTMLDivElement>(null);
+  const chatMessagesRef2 = useRef<HTMLDivElement>(null);
 
   const data = jailbreakData as JailbreakData;
   const categories = Object.keys(data);
@@ -90,6 +101,8 @@ const Playground: React.FC = () => {
           setCurrentMessages(attack.messages);
           setExpandedMessages(new Set()); // Reset expanded messages when loading new conversation
           setIsLoading(false);
+          // Scroll to final message after a brief delay to ensure DOM is updated
+          setTimeout(() => scrollToFinalMessage(chatMessagesRef1), 100);
         }, 500);
       } else {
         setCurrentMessages([]);
@@ -101,10 +114,51 @@ const Playground: React.FC = () => {
       setExpandedMessages(new Set());
     }
   }, [selectedCategory, selectedProvider, selectedAttack, data]);
+
+  // Load conversation for second view when selections change
+  useEffect(() => {
+    if (viewMode === 'side-by-side' && selectedCategory && selectedProvider && selectedAttack2) {
+      setIsLoading2(true);
+      const providers = data[selectedCategory];
+      const provider = providers.find(p => p.provider === selectedProvider);
+      const attack = provider?.attacks.find(a => a.attack_type === selectedAttack2);
+      
+      if (attack) {
+        // Simulate loading delay for better UX
+        setTimeout(() => {
+          setCurrentMessages2(attack.messages);
+          setExpandedMessages2(new Set()); // Reset expanded messages when loading new conversation
+          setIsLoading2(false);
+          // Scroll to final message after a brief delay to ensure DOM is updated
+          setTimeout(() => scrollToFinalMessage(chatMessagesRef2), 100);
+        }, 500);
+      } else {
+        setCurrentMessages2([]);
+        setExpandedMessages2(new Set());
+        setIsLoading2(false);
+      }
+    } else {
+      setCurrentMessages2([]);
+      setExpandedMessages2(new Set());
+    }
+  }, [selectedCategory, selectedProvider, selectedAttack2, data, viewMode]);
   
   // Toggle message expansion
   const toggleMessageExpansion = (index: number) => {
     setExpandedMessages(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(index)) {
+        newSet.delete(index);
+      } else {
+        newSet.add(index);
+      }
+      return newSet;
+    });
+  };
+
+  // Toggle message expansion for second view
+  const toggleMessageExpansion2 = (index: number) => {
+    setExpandedMessages2(prev => {
       const newSet = new Set(prev);
       if (newSet.has(index)) {
         newSet.delete(index);
@@ -130,16 +184,49 @@ const Playground: React.FC = () => {
     return content;
   };
 
+  // Check if message should be truncated for second view
+  const shouldTruncate2 = (content: string, index: number) => {
+    // Don't truncate the last message (final response)
+    const isLastMessage = index === currentMessages2.length - 1;
+    return content.length > TRUNCATE_LIMIT && !expandedMessages2.has(index) && !isLastMessage;
+  };
+  
+  // Get display content (truncated or full) for second view
+  const getDisplayContent2 = (content: string, index: number) => {
+    if (shouldTruncate2(content, index)) {
+      return content.substring(0, TRUNCATE_LIMIT) + '...';
+    }
+    return content;
+  };
+
+  // Scroll to final message
+  const scrollToFinalMessage = (chatRef: React.RefObject<HTMLDivElement | null>) => {
+    if (chatRef.current) {
+      const messages = chatRef.current.children;
+      if (messages.length > 0) {
+        const finalMessage = messages[messages.length - 1] as HTMLElement;
+        finalMessage.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+  };
+
   // Set defaults on component mount
   useEffect(() => {
     if (selectedCategory === 'self-harm' && !selectedProvider && !selectedAttack) {
       const providers = data[selectedCategory];
       const geminiProvider = providers.find(p => p.provider.includes('Gemini 2.5 Flash'));
       if (geminiProvider) {
+        // Set first run to Raw Malicious
+        const rawMaliciousAttack = geminiProvider.attacks.find(a => a.attack_type === 'Raw Malicious');
+        if (rawMaliciousAttack) {
+          setSelectedProvider(geminiProvider.provider);
+          setSelectedAttack('Raw Malicious');
+        }
+        
+        // Set second run to Timed-Release Jailbreak for side-by-side comparison
         const timedReleaseAttack = geminiProvider.attacks.find(a => a.attack_type === 'Timed-Release Jailbreak');
         if (timedReleaseAttack) {
-          setSelectedProvider(geminiProvider.provider);
-          setSelectedAttack('Timed-Release Jailbreak');
+          setSelectedAttack2('Timed-Release Jailbreak');
         }
       }
     }
@@ -193,7 +280,15 @@ const Playground: React.FC = () => {
   };
 
   const formatAttackType = (attackType: string) => {
-    return attackType.replace(/([A-Z])/g, ' $1').trim();
+    // Map attack types to display names
+    const attackTypeMap: { [key: string]: string } = {
+      'Raw Malicious': 'Control (raw malicious prompt)',
+      'Raw Jailbreak': 'Baseline (raw jailbreak prompt)',
+      'Encoding Jailbreak': 'Benchmark (encoding jailbreak)',
+      'Timed-Release Jailbreak': 'Ours (controlled-release jailbreak)'
+    };
+    
+    return attackTypeMap[attackType] || attackType.replace(/([A-Z])/g, ' $1').trim();
   };
 
   const formatMessageContent = (content: string) => {
@@ -268,97 +363,312 @@ const Playground: React.FC = () => {
           </div>
 
           <div className="control-group">
-            <label htmlFor="attack-select">Attack Type:</label>
+            <label htmlFor="view-mode-select">View Mode:</label>
             <select 
-              id="attack-select"
-              value={selectedAttack} 
-              onChange={(e) => setSelectedAttack(e.target.value)}
+              id="view-mode-select"
+              value={viewMode} 
+              onChange={(e) => setViewMode(e.target.value as 'single' | 'side-by-side')}
               className="control-select"
-              disabled={!selectedProvider}
             >
-              <option value="">Select an attack type...</option>
-              {getAttacks().map(attack => (
-                <option key={attack.attack_type} value={attack.attack_type}>
-                  {formatAttackType(attack.attack_type)}
-                </option>
-              ))}
+              <option value="single">Single View</option>
+              <option value="side-by-side">Side-by-Side Comparison</option>
             </select>
           </div>
         </div>
-      </div>
 
-      <div className="chat-container">
-        {!selectedCategory || !selectedProvider || !selectedAttack ? (
-          <div className="placeholder">
-            <div className="placeholder-icon">💬</div>
-            <h3>Select an example to get started</h3>
-            <p>Choose a prompt, LLM platform, and attack type from the dropdowns above to view the conversation.</p>
-          </div>
-        ) : isLoading ? (
-          <div className="loading">
-            <div className="loading-spinner"></div>
-            <p>Loading conversation...</p>
-          </div>
-        ) : (
-          <div className="chat-messages">
-            {currentMessages.map((message, index) => {
-              const displayContent = getDisplayContent(message.content, index);
-              const isLastMessage = index === currentMessages.length - 1;
-              const isTruncatable = message.content.length > TRUNCATE_LIMIT && !isLastMessage;
-              const isExpanded = expandedMessages.has(index);
-              
-              return (
-                <div 
-                  key={index} 
-                  className={`message ${message.type === 'prompt' ? 'user-message' : 'assistant-message'}`}
-                >
-                  <div className="message-header">
-                    <div className="message-avatar">
-                      {message.type === 'prompt' ? (
-                        '👤'
-                      ) : (
-                        <img 
-                          src={getPlatformIcon(selectedProvider)} 
-                          alt={formatProviderName(selectedProvider)}
-                          className="platform-icon"
-                        />
-                      )}
-                    </div>
-                    <div className="message-meta">
-                      <span className="message-role">
-                        {message.type === 'prompt' ? 'User' : formatProviderName(selectedProvider)}
-                      </span>
-                      <div className="message-info-row">
-                        <span className="message-number">Message {message.number}</span>
-                        {message.variant && (
-                          <span className="variant-label">Variant: {message.variant}</span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="message-content">
-                    {formatMessageContent(displayContent).map((formattedLine, lineIndex) => (
-                      <React.Fragment key={lineIndex}>
-                        {formattedLine}
-                        {lineIndex < formatMessageContent(displayContent).length - 1 && <br />}
-                      </React.Fragment>
-                    ))}
-                    {isTruncatable && (
-                      <button 
-                        className="expand-button"
-                        onClick={() => toggleMessageExpansion(index)}
-                        aria-label={isExpanded ? "Show less" : "Show more"}
-                      >
-                        {isExpanded ? '← Show less' : 'Show more →'}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+        {viewMode === 'single' && (
+          <div className="control-row">
+            <div className="control-group">
+              <label htmlFor="attack-select">Attack Type:</label>
+              <select 
+                id="attack-select"
+                value={selectedAttack} 
+                onChange={(e) => setSelectedAttack(e.target.value)}
+                className="control-select"
+                disabled={!selectedProvider}
+              >
+                <option value="">Select an attack type...</option>
+                {getAttacks().map(attack => (
+                  <option key={attack.attack_type} value={attack.attack_type}>
+                    {formatAttackType(attack.attack_type)}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         )}
+
+        {viewMode === 'side-by-side' && (
+          <>
+            <div className="control-row">
+              <div className="control-group">
+                <label htmlFor="attack-select-1">Left - Attack Type:</label>
+                <select 
+                  id="attack-select-1"
+                  value={selectedAttack} 
+                  onChange={(e) => setSelectedAttack(e.target.value)}
+                  className="control-select"
+                  disabled={!selectedProvider}
+                >
+                  <option value="">Select an attack type...</option>
+                  {getAttacks().map(attack => (
+                    <option key={attack.attack_type} value={attack.attack_type}>
+                      {formatAttackType(attack.attack_type)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="control-group">
+                <label htmlFor="attack-select-2">Right - Attack Type:</label>
+                <select 
+                  id="attack-select-2"
+                  value={selectedAttack2} 
+                  onChange={(e) => setSelectedAttack2(e.target.value)}
+                  className="control-select"
+                  disabled={!selectedProvider}
+                >
+                  <option value="">Select an attack type...</option>
+                  {selectedProvider && data[selectedCategory] && data[selectedCategory].find(p => p.provider === selectedProvider)?.attacks.map(attack => (
+                    <option key={attack.attack_type} value={attack.attack_type}>
+                      {formatAttackType(attack.attack_type)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </>
+        )}
       </div>
+
+      {viewMode === 'single' && (
+        <div className="chat-container">
+          {!selectedCategory || !selectedProvider || !selectedAttack ? (
+            <div className="placeholder">
+              <div className="placeholder-icon">💬</div>
+              <h3>Select an example to get started</h3>
+              <p>Choose a prompt, LLM platform, and attack type from the dropdowns above to view the conversation.</p>
+            </div>
+          ) : isLoading ? (
+            <div className="loading">
+              <div className="loading-spinner"></div>
+              <p>Loading conversation...</p>
+            </div>
+          ) : (
+            <div className="chat-messages" ref={chatMessagesRef1}>
+              {currentMessages.map((message, index) => {
+                const displayContent = getDisplayContent(message.content, index);
+                const isLastMessage = index === currentMessages.length - 1;
+                const isTruncatable = message.content.length > TRUNCATE_LIMIT && !isLastMessage;
+                const isExpanded = expandedMessages.has(index);
+                
+                return (
+                  <div 
+                    key={index} 
+                    className={`message ${message.type === 'prompt' ? 'user-message' : 'assistant-message'}`}
+                  >
+                    <div className="message-header">
+                      <div className="message-avatar">
+                        {message.type === 'prompt' ? (
+                          '👤'
+                        ) : (
+                          <img 
+                            src={getPlatformIcon(selectedProvider)} 
+                            alt={formatProviderName(selectedProvider)}
+                            className="platform-icon"
+                          />
+                        )}
+                      </div>
+                      <div className="message-meta">
+                        <span className="message-role">
+                          {message.type === 'prompt' ? 'User' : formatProviderName(selectedProvider)}
+                        </span>
+                        <div className="message-info-row">
+                          <span className="message-number">Message {message.number}</span>
+                          {message.variant && (
+                            <span className="variant-label">Variant: {message.variant}</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="message-content">
+                      {formatMessageContent(displayContent).map((formattedLine, lineIndex) => (
+                        <React.Fragment key={lineIndex}>
+                          {formattedLine}
+                          {lineIndex < formatMessageContent(displayContent).length - 1 && <br />}
+                        </React.Fragment>
+                      ))}
+                      {isTruncatable && (
+                        <button 
+                          className="expand-button"
+                          onClick={() => toggleMessageExpansion(index)}
+                          aria-label={isExpanded ? "Show less" : "Show more"}
+                        >
+                          {isExpanded ? '← Show less' : 'Show more →'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {viewMode === 'side-by-side' && (
+        <div className="side-by-side-container">
+          <div className="side-by-side-column">
+            <div className="chat-container">
+              {!selectedCategory || !selectedProvider || !selectedAttack ? (
+                <div className="placeholder">
+                  <div className="placeholder-icon">💬</div>
+                  <h3>Select attack type above</h3>
+                  <p>Choose a prompt and attack type for the left view.</p>
+                </div>
+              ) : isLoading ? (
+                <div className="loading">
+                  <div className="loading-spinner"></div>
+                  <p>Loading conversation...</p>
+                </div>
+              ) : (
+                <div className="chat-messages" ref={chatMessagesRef1}>
+                  {currentMessages.map((message, index) => {
+                    const displayContent = getDisplayContent(message.content, index);
+                    const isLastMessage = index === currentMessages.length - 1;
+                    const isTruncatable = message.content.length > TRUNCATE_LIMIT && !isLastMessage;
+                    const isExpanded = expandedMessages.has(index);
+                    
+                    return (
+                      <div 
+                        key={index} 
+                        className={`message ${message.type === 'prompt' ? 'user-message' : 'assistant-message'}`}
+                      >
+                        <div className="message-header">
+                          <div className="message-avatar">
+                            {message.type === 'prompt' ? (
+                              '👤'
+                            ) : (
+                              <img 
+                                src={getPlatformIcon(selectedProvider)} 
+                                alt={formatProviderName(selectedProvider)}
+                                className="platform-icon"
+                              />
+                            )}
+                          </div>
+                          <div className="message-meta">
+                            <span className="message-role">
+                              {message.type === 'prompt' ? 'User' : formatProviderName(selectedProvider)}
+                            </span>
+                            <div className="message-info-row">
+                              <span className="message-number">Message {message.number}</span>
+                              {message.variant && (
+                                <span className="variant-label">Variant: {message.variant}</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="message-content">
+                          {formatMessageContent(displayContent).map((formattedLine, lineIndex) => (
+                            <React.Fragment key={lineIndex}>
+                              {formattedLine}
+                              {lineIndex < formatMessageContent(displayContent).length - 1 && <br />}
+                            </React.Fragment>
+                          ))}
+                          {isTruncatable && (
+                            <button 
+                              className="expand-button"
+                              onClick={() => toggleMessageExpansion(index)}
+                              aria-label={isExpanded ? "Show less" : "Show more"}
+                            >
+                              {isExpanded ? '← Show less' : 'Show more →'}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="side-by-side-column">
+            <div className="chat-container">
+              {!selectedCategory || !selectedProvider || !selectedAttack2 ? (
+                <div className="placeholder">
+                  <div className="placeholder-icon">💬</div>
+                  <h3>Select attack type above</h3>
+                  <p>Choose a prompt and attack type for the right view.</p>
+                </div>
+              ) : isLoading2 ? (
+                <div className="loading">
+                  <div className="loading-spinner"></div>
+                  <p>Loading conversation...</p>
+                </div>
+              ) : (
+                <div className="chat-messages" ref={chatMessagesRef2}>
+                  {currentMessages2.map((message, index) => {
+                    const displayContent = getDisplayContent2(message.content, index);
+                    const isLastMessage = index === currentMessages2.length - 1;
+                    const isTruncatable = message.content.length > TRUNCATE_LIMIT && !isLastMessage;
+                    const isExpanded = expandedMessages2.has(index);
+                    
+                    return (
+                      <div 
+                        key={index} 
+                        className={`message ${message.type === 'prompt' ? 'user-message' : 'assistant-message'}`}
+                      >
+                        <div className="message-header">
+                          <div className="message-avatar">
+                            {message.type === 'prompt' ? (
+                              '👤'
+                            ) : (
+                              <img 
+                                src={getPlatformIcon(selectedProvider)} 
+                                alt={formatProviderName(selectedProvider)}
+                                className="platform-icon"
+                              />
+                            )}
+                          </div>
+                          <div className="message-meta">
+                            <span className="message-role">
+                              {message.type === 'prompt' ? 'User' : formatProviderName(selectedProvider)}
+                            </span>
+                            <div className="message-info-row">
+                              <span className="message-number">Message {message.number}</span>
+                              {message.variant && (
+                                <span className="variant-label">Variant: {message.variant}</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="message-content">
+                          {formatMessageContent(displayContent).map((formattedLine, lineIndex) => (
+                            <React.Fragment key={lineIndex}>
+                              {formattedLine}
+                              {lineIndex < formatMessageContent(displayContent).length - 1 && <br />}
+                            </React.Fragment>
+                          ))}
+                          {isTruncatable && (
+                            <button 
+                              className="expand-button"
+                              onClick={() => toggleMessageExpansion2(index)}
+                              aria-label={isExpanded ? "Show less" : "Show more"}
+                            >
+                              {isExpanded ? '← Show less' : 'Show more →'}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

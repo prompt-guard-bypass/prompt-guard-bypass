@@ -1,6 +1,6 @@
 /* Playground Styles */
 .playground {
-  margin: 1rem 0 3rem 0;
+  margin: 0 0 3rem 0;
 }
 
 .playground-header {
@@ -459,4 +459,44 @@
 
 .chat-messages::-webkit-scrollbar-thumb:hover {
   background: #a1a1a1;
+}
+
+/* Side-by-Side Layout */
+.side-by-side-container {
+  display: flex;
+  gap: 1.5rem;
+  width: 100%;
+}
+
+.side-by-side-column {
+  flex: 1;
+  min-width: 0; /* Allow flexbox to shrink */
+}
+
+.side-by-side-column .chat-container {
+  min-height: 600px;
+}
+
+.side-by-side-column .chat-messages {
+  max-height: 600px;
+}
+
+/* Responsive design for side-by-side */
+@media (max-width: 1200px) {
+  .side-by-side-container {
+    flex-direction: column;
+    gap: 2rem;
+  }
+  
+  .side-by-side-column {
+    flex: none;
+  }
+  
+  .side-by-side-column .chat-container {
+    min-height: 500px;
+  }
+  
+  .side-by-side-column .chat-messages {
+    max-height: 500px;
+  }
 }
