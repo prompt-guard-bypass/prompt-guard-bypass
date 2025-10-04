@@ -54,9 +54,13 @@ const Playground: React.FC = () => {
   const [selectedAttack, setSelectedAttack] = useState<string>('');
   const [currentMessages, setCurrentMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [expandedMessages, setExpandedMessages] = useState<Set<number>>(new Set());
 
   const data = jailbreakData as JailbreakData;
   const categories = Object.keys(data);
+  
+  // Character limit for truncation
+  const TRUNCATE_LIMIT = 500;
 
   // Get providers for selected category
   const getProviders = () => {
@@ -84,16 +88,47 @@ const Playground: React.FC = () => {
         // Simulate loading delay for better UX
         setTimeout(() => {
           setCurrentMessages(attack.messages);
+          setExpandedMessages(new Set()); // Reset expanded messages when loading new conversation
           setIsLoading(false);
         }, 500);
       } else {
         setCurrentMessages([]);
+        setExpandedMessages(new Set());
         setIsLoading(false);
       }
     } else {
       setCurrentMessages([]);
+      setExpandedMessages(new Set());
     }
   }, [selectedCategory, selectedProvider, selectedAttack, data]);
+  
+  // Toggle message expansion
+  const toggleMessageExpansion = (index: number) => {
+    setExpandedMessages(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(index)) {
+        newSet.delete(index);
+      } else {
+        newSet.add(index);
+      }
+      return newSet;
+    });
+  };
+  
+  // Check if message should be truncated
+  const shouldTruncate = (content: string, index: number) => {
+    // Don't truncate the last message (final response)
+    const isLastMessage = index === currentMessages.length - 1;
+    return content.length > TRUNCATE_LIMIT && !expandedMessages.has(index) && !isLastMessage;
+  };
+  
+  // Get display content (truncated or full)
+  const getDisplayContent = (content: string, index: number) => {
+    if (shouldTruncate(content, index)) {
+      return content.substring(0, TRUNCATE_LIMIT) + '...';
+    }
+    return content;
+  };
 
   // Set defaults on component mount
   useEffect(() => {
@@ -140,7 +175,20 @@ const Playground: React.FC = () => {
   };
 
   const formatProviderName = (provider: string) => {
-    // Clean up provider names for display
+    // Map provider names to their display format
+    const lowerProvider = provider.toLowerCase();
+    
+    if (lowerProvider.includes('deepthink') || lowerProvider.includes('deepseek')) {
+      return 'DeepSeek Chat (DeepThink)';
+    } else if (lowerProvider.includes('gemini')) {
+      return 'Google Gemini (2.5 Flash)';
+    } else if (lowerProvider.includes('grok')) {
+      return 'Grok (3)';
+    } else if (lowerProvider.includes('magistral') || lowerProvider.includes('mistral')) {
+      return 'Mistral Le Chat (Magistral)';
+    }
+    
+    // Fallback to original formatting
     return provider.replace(/ - [a-f0-9-]+$/, '');
   };
 
@@ -177,7 +225,7 @@ const Playground: React.FC = () => {
     <div className="playground">
       <div className="playground-header">
         <h2>🎮 Interactive Playground</h2>
-        <p>Explore our jailbreak examples by selecting a prompt, model, and attack type below.</p>
+        <p>Explore our jailbreak examples by selecting a prompt, LLM platform, and attack type below.</p>
       </div>
 
       <div className="playground-controls">
@@ -202,7 +250,7 @@ const Playground: React.FC = () => {
 
         <div className="control-row">
           <div className="control-group">
-            <label htmlFor="provider-select">Model:</label>
+            <label htmlFor="provider-select">LLM Platform:</label>
             <select 
               id="provider-select"
               value={selectedProvider} 
@@ -244,7 +292,7 @@ const Playground: React.FC = () => {
           <div className="placeholder">
             <div className="placeholder-icon">💬</div>
             <h3>Select an example to get started</h3>
-            <p>Choose a prompt, model, and attack type from the dropdowns above to view the conversation.</p>
+            <p>Choose a prompt, LLM platform, and attack type from the dropdowns above to view the conversation.</p>
           </div>
         ) : isLoading ? (
           <div className="loading">
@@ -254,6 +302,11 @@ const Playground: React.FC = () => {
         ) : (
           <div className="chat-messages">
             {currentMessages.map((message, index) => {
+              const displayContent = getDisplayContent(message.content, index);
+              const isLastMessage = index === currentMessages.length - 1;
+              const isTruncatable = message.content.length > TRUNCATE_LIMIT && !isLastMessage;
+              const isExpanded = expandedMessages.has(index);
+              
               return (
                 <div 
                   key={index} 
@@ -284,12 +337,21 @@ const Playground: React.FC = () => {
                     </div>
                   </div>
                   <div className="message-content">
-                    {formatMessageContent(message.content).map((formattedLine, lineIndex) => (
+                    {formatMessageContent(displayContent).map((formattedLine, lineIndex) => (
                       <React.Fragment key={lineIndex}>
                         {formattedLine}
-                        {lineIndex < formatMessageContent(message.content).length - 1 && <br />}
+                        {lineIndex < formatMessageContent(displayContent).length - 1 && <br />}
                       </React.Fragment>
                     ))}
+                    {isTruncatable && (
+                      <button 
+                        className="expand-button"
+                        onClick={() => toggleMessageExpansion(index)}
+                        aria-label={isExpanded ? "Show less" : "Show more"}
+                      >
+                        {isExpanded ? '← Show less' : 'Show more →'}
+                      </button>
+                    )}
                   </div>
                 </div>
               );

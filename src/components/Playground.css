@@ -341,6 +341,50 @@
   background-color: rgba(0, 102, 204, 0.1);
 }
 
+/* Expand/Collapse Button */
+.expand-button {
+  display: block;
+  margin-top: 0.75rem;
+  padding: 0.5rem 1rem;
+  background-color: transparent;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 6px;
+  color: inherit;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: fit-content;
+}
+
+.expand-button:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.2);
+}
+
+.expand-button:active {
+  transform: scale(0.98);
+}
+
+.user-message .expand-button {
+  border-color: rgba(255, 255, 255, 0.3);
+  color: white;
+  margin-left: auto;
+}
+
+.user-message .expand-button:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.assistant-message .expand-button {
+  border-color: rgba(0, 0, 0, 0.15);
+}
+
+.assistant-message .expand-button:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .playground-controls {
