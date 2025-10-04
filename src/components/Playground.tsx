@@ -2,6 +2,12 @@ import React, { useState, useEffect } from 'react';
 import jailbreakData from '../assets/jailbreak_data.json';
 import './Playground.css';
 
+// Import platform icons
+import deepseekIcon from '../assets/platform-icons/deepseek.png';
+import geminiIcon from '../assets/platform-icons/gemini.png';
+import grokIcon from '../assets/platform-icons/grok.png';
+import mistralIcon from '../assets/platform-icons/mistral.png';
+
 interface Message {
   type: 'prompt' | 'response';
   number: number;
@@ -23,6 +29,24 @@ interface Provider {
 interface JailbreakData {
   [category: string]: Provider[];
 }
+
+// Function to get platform icon based on provider name
+const getPlatformIcon = (providerName: string): string => {
+  const lowerName = providerName.toLowerCase();
+  
+  if (lowerName.includes('deepthink') || lowerName.includes('deepseek')) {
+    return deepseekIcon;
+  } else if (lowerName.includes('gemini')) {
+    return geminiIcon;
+  } else if (lowerName.includes('grok')) {
+    return grokIcon;
+  } else if (lowerName.includes('magistral') || lowerName.includes('mistral')) {
+    return mistralIcon;
+  }
+  
+  // Default fallback - return gemini as default
+  return geminiIcon;
+};
 
 const Playground: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>('self-harm');
@@ -237,7 +261,15 @@ const Playground: React.FC = () => {
                 >
                   <div className="message-header">
                     <div className="message-avatar">
-                      {message.type === 'prompt' ? '👤' : '🤖'}
+                      {message.type === 'prompt' ? (
+                        '👤'
+                      ) : (
+                        <img 
+                          src={getPlatformIcon(selectedProvider)} 
+                          alt={formatProviderName(selectedProvider)}
+                          className="platform-icon"
+                        />
+                      )}
                     </div>
                     <div className="message-meta">
                       <span className="message-role">
