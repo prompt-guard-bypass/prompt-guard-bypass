@@ -184,7 +184,7 @@ function App() {
           {/* Footer */}
           <footer className="footer">
             <p>
-              Built with ❤️ using React. Last updated:{" "}
+              Last updated:{" "}
               {new Date().toLocaleDateString("en-US", {
                 month: "long",
                 year: "numeric",

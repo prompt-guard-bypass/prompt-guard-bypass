@@ -67,11 +67,33 @@ const Playground: React.FC = () => {
   const chatMessagesRef1 = useRef<HTMLDivElement>(null);
   const chatMessagesRef2 = useRef<HTMLDivElement>(null);
 
+  // Track mobile viewport
+  const [isMobile, setIsMobile] = useState(false);
+
   const data = jailbreakData as JailbreakData;
   const categories = Object.keys(data);
   
   // Character limit for truncation
   const TRUNCATE_LIMIT = 500;
+
+  // Handle mobile viewport detection and force single view on mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      const mobile = window.innerWidth <= 768;
+      setIsMobile(mobile);
+      if (mobile && viewMode === 'side-by-side') {
+        setViewMode('single');
+      }
+    };
+
+    // Check on mount
+    checkMobile();
+
+    // Add resize listener
+    window.addEventListener('resize', checkMobile);
+    
+    return () => window.removeEventListener('resize', checkMobile);
+  }, [viewMode]);
 
   // Get providers for selected category
   const getProviders = () => {
@@ -362,18 +384,20 @@ const Playground: React.FC = () => {
             </select>
           </div>
 
-          <div className="control-group">
-            <label htmlFor="view-mode-select">View Mode:</label>
-            <select 
-              id="view-mode-select"
-              value={viewMode} 
-              onChange={(e) => setViewMode(e.target.value as 'single' | 'side-by-side')}
-              className="control-select"
-            >
-              <option value="single">Single View</option>
-              <option value="side-by-side">Side-by-Side Comparison</option>
-            </select>
-          </div>
+          {!isMobile && (
+            <div className="control-group">
+              <label htmlFor="view-mode-select">View Mode:</label>
+              <select 
+                id="view-mode-select"
+                value={viewMode} 
+                onChange={(e) => setViewMode(e.target.value as 'single' | 'side-by-side')}
+                className="control-select"
+              >
+                <option value="single">Single View</option>
+                <option value="side-by-side">Side-by-Side Comparison</option>
+              </select>
+            </div>
+          )}
         </div>
 
         {viewMode === 'single' && (
