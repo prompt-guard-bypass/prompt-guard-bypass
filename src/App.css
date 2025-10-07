@@ -102,6 +102,36 @@
   transform: translateY(-2px);
 }
 
+/* Call to Action Section */
+.cta-section {
+  text-align: left;
+  margin: 2rem 0 3rem 0;
+  padding: 1.5rem;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  border-left: 4px solid #0066cc;
+}
+
+.cta-text {
+  font-size: 1.1rem;
+  color: #333;
+  margin: 0;
+  line-height: 1.6;
+}
+
+.cta-link {
+  color: #0066cc;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.cta-link:hover {
+  color: #004499;
+  text-decoration: underline;
+}
+
 /* Section Styles */
 .section {
   margin-bottom: 3rem;

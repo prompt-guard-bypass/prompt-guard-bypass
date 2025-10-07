@@ -197,6 +197,26 @@ function App() {
             </p>
           </section>
 
+          {/* Call to Action */}
+          <div className="cta-section">
+            <p className="cta-text">
+              Explore real jailbreak examples in the{' '}
+              <span className="cta-link" onClick={() => setActiveTab('playground')}>
+                Playground
+              </span>
+              , or check out the{' '}
+              <a
+                href="https://arxiv.org/abs/2510.01529"
+                className="cta-link"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                paper
+              </a>
+              {' '}for attack performance details. TLDR; controlled-release attacks re-enable roleplay jailbreaks on Gemini, Grok, Mistral Le Chat, and DeepSeek Chat.
+            </p>
+          </div>
+
           {/* Analysis Section */}
           <section className="section">
             <h2>Analysis</h2>
