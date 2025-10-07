@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import './App.css'
 import overviewSvg from './assets/overview.svg'
+import timeSpaceSvg from './assets/time_space_relationship.svg'
+import bookExtractionSvg from './assets/book_extraction_success_pro.svg'
 import Navigation from './components/Navigation'
 import Playground from './components/Playground'
 
@@ -166,6 +168,74 @@ function App() {
                 essence of (indirect) prompt injection attacks.
               </p>
             </div>
+
+            <h3 style={{ marginTop: "2rem" }}>
+              Instantiating Controlled-Release Attacks
+            </h3>
+            <p>
+              We implement two variants of controlled-release prompting that
+              exploit different resource constraints:
+            </p>
+
+            <p>
+              <strong>Timed-Release Attack:</strong> Applies a substitution
+              cipher to each alphabetical character in the prompt, creating an
+              encoding that requires the model to systematically decrypt each
+              character via multi-step reasoning. This forces sequential
+              computation that exceeds the inference time budget of lightweight
+              guard models.
+            </p>
+
+            <p>
+              <strong>Spaced-Release Attack:</strong> Replaces each character
+              with verbose descriptive sentences, dramatically expanding the
+              prompt length to exploit context window limitations in guard
+              models. Both methods ensure that input filters with stricter
+              resource constraints cannot decode the malicious content, while
+              the main LLM can recover the original jailbreak prompt through its
+              superior capacity.
+            </p>
+          </section>
+
+          {/* Analysis Section */}
+          <section className="section">
+            <h2>Analysis</h2>
+
+            <h3>Validating Resource Asymmetry Thresholds</h3>
+            <div className="image-container" style={{ colorScheme: "light" }}>
+              <img
+                src={timeSpaceSvg}
+                alt="Resource thresholds for controlled-release attack success"
+                className="main-image"
+              />
+              <p className="image-caption">
+                Resource thresholds for controlled-release attack success on
+                Gemini 2.5 Flash over API. 
+              </p>
+            </div>
+
+            <p>
+              The figure above demonstrates clear thresholds where controlled-release attacks succeed. We evaluated 720 attack combinations on Gemini 2.5 Flash where baseline jailbreaks failed but the model could decode our encodings—precisely the scenarios where our controlled-release mechanism provides a non-trivial advantage. For timed-release attacks, success becomes more likely than failure above approximately 800 prompt tokens, while below 600 tokens the opposite holds. Spaced-release attacks require significantly more resources, showing success thresholds above approximately 10,000 prompt tokens or 12,500 response tokens. The majority of spaced-release data points exhibit a linear correlation between prompt and response length, reflecting the structured decoding procedure that scales with input size. These empirical thresholds help validate our assumption that lightweight guardrails operate under tighter resource constraints than the models they protect, creating exploitable asymmetries in computational budgets that enable controlled-release prompting attacks.
+            </p>
+
+            <h3>An Application: Copyrighted Data Extraction</h3>
+            <div className="image-container" style={{ colorScheme: "light" }}>
+              <img
+                src={bookExtractionSvg}
+                alt="Copyright extraction success rates"
+                className="main-image"
+              />
+              <p className="image-caption">
+                Copyright extraction success rates for Gemini 2.5 Pro using
+                roleplay jailbreak, timed-release, and spaced-release attacks.
+                Similarity scores represent sentence containment and TF-IDF
+                semantic similarity. Gray bars show normalized book length.
+              </p>
+            </div>
+
+            <p>
+              Our analysis across 60 extraction attempts reveals significant vulnerabilities in copyright protection mechanisms. Gemini 2.5 Pro demonstrates the highest susceptibility with mean extraction rates of 93.7% sentence containment and 90.4% TF-IDF similarity using timed-release attacks. Timed-release attacks prove most effective overall, achieving 89.5% average containment and 91.2% TF-IDF similarity across all tests. Most concerning, however, is that basic roleplay jailbreak prompts achieve extraction success rates of 91.2% averaged score—only 2.3 percentage points below controlled-release techniques. This small performance gap reveals a critical blind spot: Gemini 2.5 Flash/Pro alignment appears to inadequately protect intellectual property relative to preventing overtly harmful content generation. The high success rates across multiple attack methods suggest that memorized copyrighted content remains easily accessible through jailbreaking, posing serious threats to intellectual property rights and highlighting the need for more robust defenses against targeted data extraction.
+            </p>
           </section>
 
           {/* Citation Section */}
